@@ -2,10 +2,11 @@ import numpy as np
 import torch
 import gymnasium as gym
 from minatar import Environment
-from minatar.gym import register_env
+# from minatar.gym import register_env
 import torch.nn as nn
 import torch.functional as F
 import random
+from collections import deque
 
 SEED = 42
 np.random.seed(SEED)
@@ -13,8 +14,8 @@ torch.manual_seed(SEED)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(SEED)
 
-if "MinAtar/Breakout-v1" not in gym.envs.registry:
-    register_envs()
+# if "MinAtar/Breakout-v1" not in gym.envs.registry:
+#     register_envs()
 
 
 def random_policy(observation, num_actions):
@@ -168,7 +169,18 @@ class HyperParamDeep:
     self.reward_truncated
 
 
-def run_episode_Q_learning_training(env, Q, epoch, hyper_param, find_Q_policy):
+def find_deep_Q_policy(Q, epsilon=None, with_exploration=False):
+    """Return the policy from the Q learning"""
+    def policy(observation, num_actions):
+        """The policy it returns"""
+        if with_exploration:
+            if np.random.uniform(0,1) < epsilon:
+                return np.random.randint(num_actions)
+        return Q(observation)
+    return policy
+
+
+def run_episode_deep_Q_learning_training(env, Q, epoch, hyper_param, find_Q_policy):
     """Run one episode of Q learning"""
     observation, info = env.reset()
     num_actions = env.action_space.n
@@ -178,9 +190,9 @@ def run_episode_Q_learning_training(env, Q, epoch, hyper_param, find_Q_policy):
     truncated = False
     steps = 0
 
+    epsilon = hyper_param.epsilon_init * (hyper_param.d**epoch)
     while not (terminated or truncated):
-        epsilon = hyper_param.epsilon_init * (hyper_param.d**epoch)
-        policy = find_Q_policy(Q, epsilon, with_exploration=True)
+        policy = find_deep_Q_policy(Q, epsilon, with_exploration=True)
         action = policy(observation, num_actions)
         state = find_state_Q(observation)
         observation, reward, terminated, truncated, info = env.step(action)
@@ -192,5 +204,8 @@ def run_episode_Q_learning_training(env, Q, epoch, hyper_param, find_Q_policy):
     return total_reward, steps, Q
 
 
+
+if __name__ == "__main__":
+    print("piche")
 
 
